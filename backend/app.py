@@ -5,7 +5,8 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_FILE = os.path.join(BASE_DIR, "tasks.json")
+# Allow overriding the storage path (useful on platforms with ephemeral/non-writable repo dirs).
+DATA_FILE = os.environ.get("TASKS_FILE", os.path.join(BASE_DIR, "task_data.json"))
 
 app = Flask(__name__, static_folder="../frontend", static_url_path="")
 CORS(app)
@@ -14,12 +15,22 @@ CORS(app)
 def load_tasks():
     try:
         with open(DATA_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except FileNotFoundError:
+            content = f.read().strip()
+            if not content:
+                return []
+            return json.loads(content)
+    except (FileNotFoundError, json.JSONDecodeError):
+        # Ensure the tasks file exists and contains a valid JSON array.
+        try:
+            with open(DATA_FILE, "w", encoding="utf-8") as f:
+                json.dump([], f, ensure_ascii=False, indent=2)
+        except OSError:
+            pass
         return []
 
 
 def save_tasks(tasks):
+    os.makedirs(os.path.dirname(DATA_FILE), exist_ok=True)
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(tasks, f, ensure_ascii=False, indent=2)
 
@@ -76,6 +87,38 @@ def add_task():
     return jsonify(task), 201
 
 
+@app.route("/api/update-task/<task_id>", methods=["PUT"])
+def update_task(task_id):
+    payload = request.get_json(force=True)
+    new_statut = payload.get("statut", "").strip()
+
+    if new_statut not in ["À venir", "En cours", "Terminée"]:
+        return jsonify({"error": "Statut invalide."}), 400
+
+    tasks = load_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        return jsonify({"error": "Tâche non trouvée."}), 404
+
+    task["statut"] = new_statut
+    save_tasks(tasks)
+
+    return jsonify(task)
+
+
+@app.route("/api/delete-task/<task_id>", methods=["DELETE"])
+def delete_task(task_id):
+    tasks = load_tasks()
+    task = next((t for t in tasks if t["id"] == task_id), None)
+    if not task:
+        return jsonify({"error": "Tâche non trouvée."}), 404
+
+    tasks.remove(task)
+    save_tasks(tasks)
+
+    return jsonify({"message": "Tâche supprimée."})
+
+
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_frontend(path):
@@ -86,4 +129,5 @@ def serve_frontend(path):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=True)

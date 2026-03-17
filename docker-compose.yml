@@ -4,6 +4,6 @@ services:
     ports:
       - "5000:5000"
     volumes:
-      - ./backend/tasks.json:/app/backend/tasks.json
+      - ./backend/task_data.json:/app/backend/task_data.json
     environment:
       - FLASK_ENV=development

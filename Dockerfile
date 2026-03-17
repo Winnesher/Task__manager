@@ -18,10 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/ ./backend
 COPY frontend/ ./frontend
 
-# Ensure tasks.json exists and is writable
+# Ensure task_data.json exists and is writable
 RUN mkdir -p /app/backend && \
-    touch /app/backend/tasks.json && \
-    chmod 666 /app/backend/tasks.json
+    touch /app/backend/task_data.json && \
+    chmod 666 /app/backend/task_data.json
 
 WORKDIR /app/backend
 

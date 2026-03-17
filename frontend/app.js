@@ -55,8 +55,31 @@ function createTaskCard(task) {
   status.className = "task-card__status";
   status.textContent = formatStatusLabel(task.statut);
 
+  const actions = document.createElement("div");
+  actions.className = "task-card__actions";
+
+  // Status change buttons
+  const statusSelect = document.createElement("select");
+  statusSelect.className = "status-select";
+  ["À venir", "En cours", "Terminée"].forEach(stat => {
+    const option = document.createElement("option");
+    option.value = stat;
+    option.textContent = stat;
+    if (stat === task.statut) option.selected = true;
+    statusSelect.appendChild(option);
+  });
+  statusSelect.addEventListener("change", () => updateTaskStatus(task.id, statusSelect.value));
+
+  // Delete button
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "delete-btn";
+  deleteBtn.textContent = "Supprimer";
+  deleteBtn.addEventListener("click", () => deleteTask(task.id));
+
+  actions.append(statusSelect, deleteBtn);
+
   meta.append(title, times);
-  card.append(meta, status);
+  card.append(meta, status, actions);
 
   return card;
 }
@@ -85,14 +108,59 @@ async function sendToServer(task) {
   });
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || "Erreur lors de l'envoi.");
+    // Try to extract a useful error message (JSON or plain text).
+    let errorBody = "";
+    try {
+      const json = await res.json();
+      errorBody = json.error || JSON.stringify(json);
+    } catch {
+      errorBody = await res.text().catch(() => "");
+    }
+
+    const message =
+      errorBody && errorBody !== ""
+        ? `${res.status} ${res.statusText}: ${errorBody}`
+        : `${res.status} ${res.statusText}`;
+
+    console.error("API error:", message);
+    throw new Error(message);
   }
 
-  return res.json();
+async function updateTaskStatus(taskId, newStatus) {
+  try {
+    const res = await fetch(`${API_BASE}/update-task/${taskId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ statut: newStatus }),
+    });
+
+    if (!res.ok) {
+      throw new Error("Erreur lors de la mise à jour du statut.");
+    }
+
+    await displayTasks();
+  } catch (err) {
+    showMessage(err.message, "error");
+  }
 }
 
-function captureInput() {
+async function deleteTask(taskId) {
+  if (!confirm("Êtes-vous sûr de vouloir supprimer cette tâche ?")) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/delete-task/${taskId}`, {
+      method: "DELETE",
+    });
+
+    if (!res.ok) {
+      throw new Error("Erreur lors de la suppression de la tâche.");
+    }
+
+    await displayTasks();
+  } catch (err) {
+    showMessage(err.message, "error");
+  }
+}
   const form = new FormData(taskForm);
   return {
     titre: form.get("titre")?.toString().trim() ?? "",

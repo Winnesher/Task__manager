@@ -121,7 +121,7 @@ button:hover {
   padding: 1rem;
   background: rgba(255, 255, 255, 0.05);
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: 1fr auto auto;
   gap: 1rem;
   align-items: center;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -183,4 +183,35 @@ button:hover {
 
 .task-card--avenir .task-card__status {
   background: rgba(56, 189, 248, 0.15);
+}
+
+.task-card__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-end;
+}
+
+.status-select {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 0.8rem;
+}
+
+.delete-btn {
+  padding: 0.4rem 0.8rem;
+  background: var(--danger);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.delete-btn:hover {
+  filter: brightness(1.1);
 }
